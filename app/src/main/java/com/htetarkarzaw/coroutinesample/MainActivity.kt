@@ -1,17 +1,15 @@
 package com.htetarkarzaw.coroutinesample
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
 import com.htetarkarzaw.coroutinesample.databinding.ActivityMainBinding
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlin.system.measureTimeMillis
 
 class MainActivity : AppCompatActivity() {
-    private var _binding : ActivityMainBinding? = null
+    private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
     private val RESULT_1 = "Result #1"
     private val RESULT_2 = "Result #2"
@@ -21,10 +19,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.btnHitMe.setOnClickListener {
-            CoroutineScope(IO).launch {
-                fakeApiCall()
-            }
-//            setNewText("Jip too lay!")
+            setNewText("Clicked!")
+            fakeApiCall()
         }
 
         binding.btnHitMe.setOnLongClickListener {
@@ -33,41 +29,52 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-//    private suspend fun fakeApiRequest(){
-//
-//    }
-
-    private fun setNewText(input :String){
-        val newText = binding.tvText.text.toString()+"\n$input"
+    private fun setNewText(input: String) {
+        val newText = binding.tvText.text.toString() + "\n$input"
         binding.tvText.text = newText
     }
 
-    private suspend fun setTextOnMainThread(input: String){
-        withContext(Main){
+    private suspend fun setTextOnMainThread(input: String) {
+        withContext(Main) {
             setNewText(input)
         }
     }
-    private suspend fun fakeApiCall(){
-        val result1 = getResult1FromApi()
-        println("debug $result1")
-        setTextOnMainThread(result1)
-        setTextOnMainThread(getResult2FromApi())
+
+    private fun fakeApiCall() {
+        CoroutineScope(IO).launch {
+            val executionTime = measureTimeMillis {
+                val result1 = async {
+                    println("debug: launching job1 ${Thread.currentThread().name}")
+                    getResult1FromApi()
+                }.await()
+
+                val result2 = async {
+                    println("debug: launching job1 ${Thread.currentThread().name}")
+                    getResult2FromApi("asdfasdfasdg")
+                }.await()
+                println("debug: got result2: $result2")
+            }
+            println("debug: total elapsed time: $executionTime ms.")
+        }
     }
-    private suspend fun getResult1FromApi(): String{
-        logThread("getResult1FromApi")
+
+    private suspend fun getResult1FromApi(): String {
         delay(1000)
         return RESULT_1
     }
 
-    private suspend fun getResult2FromApi(): String{
-        logThread("getResult2FromApi")
+    private suspend fun getResult2FromApi(result1: String): String {
         delay(1000)
-        return RESULT_2
+        if (result1 == RESULT_1) {
+            return RESULT_2
+        }
+        return "Result #1 was incorrect..."
     }
 
-    private fun logThread(methodName:String){
+    private fun logThread(methodName: String) {
         println("debug: $methodName ${Thread.currentThread().name}")
     }
+
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
