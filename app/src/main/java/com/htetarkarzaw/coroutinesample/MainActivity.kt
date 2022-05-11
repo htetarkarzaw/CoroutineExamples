@@ -2,29 +2,31 @@ package com.htetarkarzaw.coroutinesample
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.ProgressBar
+import android.widget.Toast
 import com.htetarkarzaw.coroutinesample.databinding.ActivityMainBinding
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private var _binding : ActivityMainBinding? = null
     private val binding get() = _binding!!
-    private val RESULT_1 = "Result #1"
-    private val RESULT_2 = "Result #2"
+
+    private val PROGRESS_MAX = 100
+    private val PROGRESS_START = 0
+    private val JOB_TIME = 4000
+    private lateinit var job : CompletableJob
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         binding.btnHitMe.setOnClickListener {
-            CoroutineScope(IO).launch {
-                fakeApiCall()
+            if(!::job.isInitialized){
+                initJob()
             }
-//            setNewText("Jip too lay!")
+            binding.pbJob.startJobOrCancel(job)
         }
 
         binding.btnHitMe.setOnLongClickListener {
@@ -33,41 +35,60 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-//    private suspend fun fakeApiRequest(){
-//
-//    }
-
-    private fun setNewText(input :String){
-        val newText = binding.tvText.text.toString()+"\n$input"
-        binding.tvText.text = newText
-    }
-
-    private suspend fun setTextOnMainThread(input: String){
-        withContext(Main){
-            setNewText(input)
+    fun ProgressBar.startJobOrCancel(job: Job){
+        if(this.progress>0){
+            println("$job is already active.cancelling.....")
+            resetJob()
+        }else{
+            binding.btnHitMe.text = "Cancel job 1"
+            CoroutineScope(IO + job).launch {
+                println("coroutine $this is activated with job: $job")
+                for (i in PROGRESS_START..PROGRESS_MAX){
+                    delay((JOB_TIME/PROGRESS_MAX).toLong())
+                    this@startJobOrCancel.progress = i
+                }
+                updateJobCompleteTextView("Job is complete.")
+            }
         }
     }
-    private suspend fun fakeApiCall(){
-        val result1 = getResult1FromApi()
-        println("debug $result1")
-        setTextOnMainThread(result1)
-        setTextOnMainThread(getResult2FromApi())
-    }
-    private suspend fun getResult1FromApi(): String{
-        logThread("getResult1FromApi")
-        delay(1000)
-        return RESULT_1
+
+    private fun  updateJobCompleteTextView(text : String){
+        GlobalScope.launch(Main) {
+            binding.tvText.text = text
+        }
     }
 
-    private suspend fun getResult2FromApi(): String{
-        logThread("getResult2FromApi")
-        delay(1000)
-        return RESULT_2
+    private fun resetJob() {
+        if(job.isActive || job.isCompleted){
+            job.cancel(CancellationException("Resetting job."))
+        }
+        initJob()
     }
 
-    private fun logThread(methodName:String){
-        println("debug: $methodName ${Thread.currentThread().name}")
+    fun initJob(){
+        binding.btnHitMe.text = "Start Job 1"
+        updateJobCompleteTextView("")
+        job = Job()
+        job.invokeOnCompletion {
+            it?.message.let {
+                var message = it
+                if(message.isNullOrBlank()){
+                    message = "Unknown cancellation error."
+                }
+                println("$job was cancelled. Reason: $message")
+                showToast(message)
+            }
+            binding.pbJob.max = PROGRESS_MAX
+            binding.pbJob.progress = PROGRESS_START
+        }
     }
+
+    fun showToast(text : String){
+        GlobalScope.launch(Main) {
+            Toast.makeText(this@MainActivity,text,Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
