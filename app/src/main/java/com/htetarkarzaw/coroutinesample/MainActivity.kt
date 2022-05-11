@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.system.measureTimeMillis
 
 class MainActivity : AppCompatActivity() {
     private var _binding : ActivityMainBinding? = null
@@ -21,10 +22,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.btnHitMe.setOnClickListener {
-            CoroutineScope(IO).launch {
-                fakeApiCall()
-            }
-//            setNewText("Jip too lay!")
+            binding.btnHitMe.text = "Clicked!"
+            fakeApiRequest()
         }
 
         binding.btnHitMe.setOnLongClickListener {
@@ -33,9 +32,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-//    private suspend fun fakeApiRequest(){
-//
-//    }
+    private fun fakeApiRequest(){
+        val startTime = System.currentTimeMillis()
+        val parentJob = CoroutineScope(IO).launch {
+            val job1 = launch {
+                val time1 = measureTimeMillis {
+                    println("debug: launching job1 in thread: ${Thread.currentThread().name}")
+                    val result1 = getResult1FromApi()
+                    setTextOnMainThread(result1)
+                }
+                println("debug: complete job1 in $time1 ms.")
+            }
+
+            val job2 = launch {
+                val time2 = measureTimeMillis {
+                    println("debug: launching job2 in thread: ${Thread.currentThread().name}")
+                    val result2 = getResult2FromApi()
+                    setTextOnMainThread(result2)
+                }
+                println("debug: complete job1 in $time2 ms.")
+            }
+        }
+        parentJob.invokeOnCompletion {
+            println("debug: total elapsed time: ${System.currentTimeMillis()-startTime}")
+        }
+    }
 
     private fun setNewText(input :String){
         val newText = binding.tvText.text.toString()+"\n$input"
@@ -47,27 +68,16 @@ class MainActivity : AppCompatActivity() {
             setNewText(input)
         }
     }
-    private suspend fun fakeApiCall(){
-        val result1 = getResult1FromApi()
-        println("debug $result1")
-        setTextOnMainThread(result1)
-        setTextOnMainThread(getResult2FromApi())
-    }
     private suspend fun getResult1FromApi(): String{
-        logThread("getResult1FromApi")
         delay(1000)
         return RESULT_1
     }
 
     private suspend fun getResult2FromApi(): String{
-        logThread("getResult2FromApi")
-        delay(1000)
+        delay(1700)
         return RESULT_2
     }
 
-    private fun logThread(methodName:String){
-        println("debug: $methodName ${Thread.currentThread().name}")
-    }
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
