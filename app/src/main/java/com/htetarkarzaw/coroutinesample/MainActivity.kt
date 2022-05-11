@@ -3,12 +3,9 @@ package com.htetarkarzaw.coroutinesample
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.htetarkarzaw.coroutinesample.databinding.ActivityMainBinding
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.system.measureTimeMillis
 
 class MainActivity : AppCompatActivity() {
@@ -33,28 +30,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun fakeApiRequest(){
-        val startTime = System.currentTimeMillis()
-        val parentJob = CoroutineScope(IO).launch {
-            val job1 = launch {
-                val time1 = measureTimeMillis {
-                    println("debug: launching job1 in thread: ${Thread.currentThread().name}")
-                    val result1 = getResult1FromApi()
-                    setTextOnMainThread(result1)
+        CoroutineScope(IO).launch {
+            val executionTime = measureTimeMillis {
+                val result1 : Deferred<String> = async {
+                    println("debug: launching job1 ${Thread.currentThread().name}")
+                    getResult1FromApi()
                 }
-                println("debug: complete job1 in $time1 ms.")
-            }
-
-            val job2 = launch {
-                val time2 = measureTimeMillis {
-                    println("debug: launching job2 in thread: ${Thread.currentThread().name}")
-                    val result2 = getResult2FromApi()
-                    setTextOnMainThread(result2)
+                val result2 : Deferred<String> = async {
+                    println("debug: launching job2 ${Thread.currentThread().name}")
+                    getResult2FromApi()
                 }
-                println("debug: complete job1 in $time2 ms.")
+                var result = ""
+                val job = launch {
+                    result = getResult1FromApi()
+                }
+                job.join()
+                println("debug: job: $result")
+                setTextOnMainThread("Got ${result1.await()}")
+                setTextOnMainThread("Got ${result2.await()}")
             }
-        }
-        parentJob.invokeOnCompletion {
-            println("debug: total elapsed time: ${System.currentTimeMillis()-startTime}")
+            println("debug: total time elapsed: $executionTime")
         }
     }
 
