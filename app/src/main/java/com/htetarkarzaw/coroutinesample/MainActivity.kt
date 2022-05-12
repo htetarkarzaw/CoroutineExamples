@@ -1,7 +1,9 @@
 package com.htetarkarzaw.coroutinesample
 
+import android.nfc.Tag
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import com.htetarkarzaw.coroutinesample.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
@@ -9,22 +11,22 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     private var _binding : ActivityMainBinding? = null
     private val binding get() = _binding!!
-    private val RESULT_1 = "Result #1"
-    private val RESULT_2 = "Result #2"
+    private val TAG = "AppDebug"
+    var count = 0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
+        timeDif("12:30pm-12:00am")
+        main()
         binding.btnHitMe.setOnClickListener {
-            CoroutineScope(IO).launch {
-                fakeApiCall()
-            }
-//            setNewText("Jip too lay!")
+            binding.tvText.text = (count++).toString()
         }
 
         binding.btnHitMe.setOnLongClickListener {
@@ -33,43 +35,100 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-//    private suspend fun fakeApiRequest(){
-//
-//    }
-
-    private fun setNewText(input :String){
-        val newText = binding.tvText.text.toString()+"\n$input"
-        binding.tvText.text = newText
-    }
-
-    private suspend fun setTextOnMainThread(input: String){
-        withContext(Main){
-            setNewText(input)
+    private fun main() {
+        CoroutineScope(Main).launch {
+            printLn("Current Thread: ${Thread.currentThread().name}")
+//            for(i in 1..100_000){
+//                launch {
+//                    doNetworkRequest()
+//                }
+//            }
+            doNetworkRequest()
         }
     }
-    private suspend fun fakeApiCall(){
-        val result1 = getResult1FromApi()
-        println("debug $result1")
-        setTextOnMainThread(result1)
-        setTextOnMainThread(getResult2FromApi())
-    }
-    private suspend fun getResult1FromApi(): String{
-        logThread("getResult1FromApi")
-        delay(1000)
-        return RESULT_1
+
+    private suspend fun doNetworkRequest(){
+        println("Starting network request.....")
+        delay(5000)
+        println("finished network request!")
     }
 
-    private suspend fun getResult2FromApi(): String{
-        logThread("getResult2FromApi")
-        delay(1000)
-        return RESULT_2
-    }
-
-    private fun logThread(methodName:String){
-        println("debug: $methodName ${Thread.currentThread().name}")
+    private fun printLn(text:String){
+        Log.e(TAG,text)
     }
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
+    }
+
+    fun timeDif(time: String):String{
+        var time1 = time.split("-")[0]
+        var time2 = time.split("-")[1]
+        var hour1 = time1.split(":")[0].toInt()
+        var hour2 = time1.split(":")[0].toInt()
+        var min1_zone = time1.split(":")[1]
+        var min2_zone = time2.split(":")[1]
+        var min1 = min1_zone.subSequence(0,2).toString().toInt()
+        var min2 = min2_zone.subSequence(0,2).toString().toInt()
+        var zone1 = min1_zone.subSequence(2,4)
+        var zone2 = min2_zone.subSequence(2,4)
+        var formatHour1 =0
+        var formatHour2 =0
+        formatHour1 = if (zone1 != "am") {
+            if(hour1==12){
+                hour1
+            }else{
+                hour1+12
+            }
+        } else {
+            if(hour1==12){
+                0
+            }else{
+                hour1
+            }
+        }
+        formatHour2 = if (zone2 != "am") {
+            if(hour1==12){
+                hour1
+            }else{
+                hour1+12
+            }
+        } else {
+            if(hour2==12){
+                0
+            }else{
+                hour2
+            }
+        }
+        var hourDif = formatHour1-formatHour2
+        var minDif = 0
+        if(hourDif<0){
+            hourDif *= (-1)
+            if(min2<min1){
+                min2+60
+                hourDif -= 1
+            }
+            minDif = min2-min1
+        }else{
+            if(min1<min2){
+                min1+60
+                hourDif -= 1
+            }
+            minDif = min1-min2
+        }
+        var dif = (hourDif*60)+minDif
+        printLn("Time-------$formatHour1&$formatHour2---$dif")
+        return "$dif"
+    }
+
+    fun getMillisecondFromTime(time: String?): Long {
+        return try {
+            val myDate = time
+            val sdf = SimpleDateFormat("h:mma")
+            val date = sdf.parse(myDate)
+            date.time
+        }catch (e:Exception){
+            0
+        }
     }
 }
