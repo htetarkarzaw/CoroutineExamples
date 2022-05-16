@@ -23,16 +23,47 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        timeDif("12:30pm-12:00am")
+//        timeDif("12:30pm-12:00am")
+        solution("abbaacc")
         main()
         binding.btnHitMe.setOnClickListener {
-            binding.tvText.text = (count++).toString()
+//            binding.tvText.text = (count++).toString()
+            solution("abbaacc")
         }
 
         binding.btnHitMe.setOnLongClickListener {
             binding.tvText.text = ""
             return@setOnLongClickListener true
         }
+    }
+
+    private fun solution(s: String) {
+        var list = s.trim().toList()
+        var charList = ArrayList<Char>()
+        var countList = ArrayList<Int>()
+        for(i in list){
+            var count = 0
+            var isAlreadyIn = false
+            for(char in charList) {
+                if (char == i){
+                    isAlreadyIn=true
+                }
+            }
+            if(!isAlreadyIn) {
+                charList.add(i)
+                for(j in list){
+                    if(i == j){
+                        count +=1
+                    }
+                }
+                countList.add(count)
+            }
+        }
+        var finalString = ""
+        for(i in 0 until charList.size){
+            finalString+=countList[i].toString()+charList[i].toString()
+        }
+        println("Test----$finalString")
     }
 
     private fun main() {
